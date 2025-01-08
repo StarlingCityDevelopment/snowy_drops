@@ -14,38 +14,50 @@ local function getOffsetCoords(point, model)
     end
 
     local min, max = GetModelDimensions(model)
-    local dims = {
-        width = max.x - min.x,
-        length = max.y - min.y,
-        height = max.z - min.z
-    }
-    local itemWidth = dims.width + spacing
+    local radius = 0.5  -- Base radius for the circle
+    local maxAttempts = 20  -- Maximum attempts to find a valid position
     
-    local xOffset = (currentRow % itemsPerRow) * itemWidth
-    local yOffset = math.floor(currentRow / itemsPerRow) * itemWidth
-    
-    currentRow = currentRow + 1
-    
-    local newCoords = vec3(
-        point.coords.x + xOffset,
-        point.coords.y + yOffset,
-        point.coords.z
-    )
-
-    for _, dropModel in pairs(config.dropItems) do
-        local found = GetClosestObjectOfType(
-            newCoords.x, newCoords.y, newCoords.z,
-            0.1,
-            joaat(dropModel),
-            false, false, false
+    -- Generate random angle and distance within a circle
+    for attempt = 1, maxAttempts do
+        local angle = math.random() * 2 * math.pi
+        local distance = math.sqrt(math.random()) * radius  -- Square root for more uniform distribution
+        
+        -- Add some controlled randomness to make it look more natural
+        local jitter = math.random() * 0.1 - 0.05
+        
+        local newCoords = vec3(
+            point.coords.x + math.cos(angle) * distance + jitter,
+            point.coords.y + math.sin(angle) * distance + jitter,
+            point.coords.z
         )
 
-        if found and DoesEntityExist(found) then
-            return getOffsetCoords(point, model)
+        -- Check if position is clear
+        local isPositionClear = true
+        for _, dropModel in pairs(config.dropItems) do
+            local found = GetClosestObjectOfType(
+                newCoords.x, newCoords.y, newCoords.z,
+                0.2,  -- Slightly increased detection radius
+                joaat(dropModel),
+                false, false, false
+            )
+
+            if found and DoesEntityExist(found) then
+                isPositionClear = false
+                break
+            end
+        end
+
+        if isPositionClear then
+            return newCoords
         end
     end
 
-    return newCoords
+    -- Fallback: If no position found, return slightly offset coordinates
+    return vec3(
+        point.coords.x + math.random() * 0.3 - 0.15,
+        point.coords.y + math.random() * 0.3 - 0.15,
+        point.coords.z
+    )
 end
 
 local function setupInteractions(point, entity, item, slot)
@@ -190,6 +202,7 @@ local function onEnterDrop(point)
                 DeleteEntity(oxProp)
             end
         end)
+        print(json.encode(point.items))
         for itemSlot, _ in pairs(point.items) do
             local item, slot = itemSlot:match("(.+):(%d+)")
             addDropObject(point, item, tonumber(slot))
@@ -238,18 +251,66 @@ AddStateBagChangeHandler('instance', stateId, function(_, _, value)
     end
 end)
 
-RegisterNetEvent('snowy_drops:client:updateDropId', function(dropId, added, item, slot)
+RegisterNetEvent('snowy_drops:client:updateDropId', function(dropId, isToDrop, newItem, oldItem, isInsideDrop, isSplit2Props)
     local point = drops[dropId]
-    if point then
-        local itemKey = item .. ":" .. slot
-        if added then
-            point.items[itemKey] = true
-            addDropObject(point, item, slot)
+    if not point then return end
+    
+    lastPosition = vec3(0, 0, 0)
+    print(isInsideDrop, isSplit2Props)
+    if isInsideDrop then
+        if isSplit2Props then
+            print('splitting props')
+            local oldItemKey = ('%s:%s'):format(oldItem.item, oldItem.slot)
+            if point.items[oldItemKey] then
+                point.items[oldItemKey] = nil
+                removeDropObject(point, oldItem.item, oldItem.slot)
+            end
+            local newItemKey = ('%s:%s'):format(newItem.item, newItem.slot)
+            point.items[newItemKey] = true
+            addDropObject(point, newItem.item, newItem.slot)
+            
+            local splitItemKey = ('%s:%s'):format(oldItem.item, oldItem.slot)
+            point.items[splitItemKey] = true
+            addDropObject(point, oldItem.item, oldItem.slot)
+
+            return true
         else
-            point.items[itemKey] = nil
-            removeDropObject(point, item, slot)
+            local oldItemKey = ('%s:%s'):format(oldItem.item, oldItem.slot)
+            if point.items[oldItemKey] then
+                point.items[oldItemKey] = nil
+                removeDropObject(point, oldItem.item, oldItem.slot)
+            end
+        end
+    elseif isToDrop then
+        
+        if point.entitys then
+            local oldItemKey = ('%s:%s'):format(oldItem.item, oldItem.slot)
+            point.items[oldItemKey] = nil
+            removeDropObject(point, oldItem.item, oldItem.slot)
+        end
+
+        local newItemKey = ('%s:%s'):format(newItem.item, newItem.slot)
+        point.items[newItemKey] = true
+        
+        if point.currentDistance and point.currentDistance <= point.distance then
+            addDropObject(point, newItem.item, newItem.slot)
+        end
+    else
+        if point.items then
+            local oldItemKey = ('%s:%s'):format(oldItem.item, oldItem.slot)
+            point.items[oldItemKey] = nil
+            removeDropObject(point, oldItem.item, oldItem.slot)
+            
+            if not next(point.items) then
+                if not lib.callback.await('snowy_drops:server:doesDropExist', false, dropId) then
+                    if point.entitys then removeObjects(point) end
+                    point:remove()
+                    drops[dropId] = nil
+                end
+            end
         end
     end
+    print(json.encode(point.items))
 end)
 
 RegisterNetEvent('ox_inventory:createDrop', function(dropId, data, owner, slot)
@@ -265,4 +326,9 @@ RegisterNetEvent('ox_inventory:removeDrop', function(dropId)
         point:remove()
         if point.entitys then removeObjects(point) end
     end
+end)
+
+
+RegisterNetEvent('snowy_drops:client:closeInv', function()
+    exports.ox_inventory:closeInventory()
 end)

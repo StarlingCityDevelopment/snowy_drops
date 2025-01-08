@@ -4,6 +4,6 @@ return {
         burger = `prop_cs_burger_01`,
         water = `prop_ld_flow_bottle`
     },
-    useTarget = false,
-    useInteract = true
+    useTarget = true, -- ox_target
+    useInteract = false -- interact by darktrovx
 }
