@@ -26,7 +26,6 @@ end, {
 
 lib.callback.register('snowy_drops:server:pickupItem', function(source, dropId, itemData)
     if not string.match(dropId, '^drop%-%d+$') then return end
-    local source = source
     local inventory = exports.ox_inventory:GetInventory(dropId)
     
     if not inventory then return end
@@ -34,10 +33,11 @@ lib.callback.register('snowy_drops:server:pickupItem', function(source, dropId, 
     local item = inventory.items[itemData.slot]
     if not item or item.name ~= itemData.name then return end
     
-    local success = exports.ox_inventory:AddItem(source, itemData.name, itemData.count, item.metadata)
+    local success = exports.ox_inventory:RemoveItem(dropId, itemData.name, itemData.count, item.metadata, itemData.slot)
+
     
     if success then
-        exports.ox_inventory:RemoveItem(dropId, itemData.name, itemData.count, item.metadata, itemData.slot)
+        exports.ox_inventory:AddItem(source, itemData.name, itemData.count, item.metadata)
         return true
     end
     return false
