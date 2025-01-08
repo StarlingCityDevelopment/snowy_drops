@@ -14,6 +14,7 @@
 ```lua
 item_name = "spawn_code",
 ```
+insdie the dropItems table.
 4. Save the file
 5. Restart the script
 6. Its done!
