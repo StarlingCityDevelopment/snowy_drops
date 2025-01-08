@@ -10,11 +10,10 @@
 ## How to add more props?
 1. Go into the `snowy_drops` folder
 2. Go into the `config/client.lua` file
-3. Add your props as this:
+3. Add your props as this (insdie the dropItems table):
 ```lua
 item_name = "spawn_code",
 ```
-insdie the dropItems table.
 4. Save the file
 5. Restart the script
 6. Its done!
