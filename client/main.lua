@@ -48,45 +48,40 @@ local function getOffsetCoords(point, model)
     return newCoords
 end
 
-local function setupInteractions(point, entity, item)
+local function setupInteractions(point, entity, item, slot)
     if config.useTarget then
         print('useTarget')
         exports.ox_target:addLocalEntity(entity, {
             {
                 label = ('Pick up %s'):format(item),
-                name = ('pickup_%s'):format(item),
+                name = ('pickup_%s_%s'):format(item, slot),
                 distance = 2.0,
                 onSelect = function()
                     -- Find the item data in the inventory
                     local inventory = lib.callback.await('snowy_drops:callback:getDropItems', false, point.invId)
                     if not inventory then return end
-                    for slot, slotData in pairs(inventory.items) do
-                        if slotData.name == item then
-                            local data = lib.callback.await('snowy_drops:server:pickupItem', false, point.invId, {
-                                name = item,
-                                slot = slot,
-                                count = slotData.count
+                    local slotData = inventory.items[slot]
+                    if slotData and slotData.name == item then
+                        local data = lib.callback.await('snowy_drops:server:pickupItem', false, point.invId, {
+                            name = item,
+                            slot = slot,
+                            count = slotData.count
+                        })
+                        if data == "no" then return end
+                        if data then
+                           lib.notify({
+                            title = 'Item Picked Up',
+                            description = ('You picked up %s'):format(item),
+                            type = 'success'
+                           })
+                           -- Remove item from the point's items list
+                        else
+                            lib.notify({
+                                title = 'Item doesn\'t exists',
+                                description = ('The item you are trying to pick up doesn\'t exists anymore'),
+                                type = 'error'
                             })
-                            if data then
-                               lib.notify({
-                                title = 'Item Picked Up',
-                                description = ('You picked up %s'):format(item),
-                                type = 'success'
-                               })
-                               -- Remove item from the point's items list
-                               point.items[item] = nil
-                               DeleteEntity(entity)
-                            else
-                                lib.notify({
-                                    title = 'Item doesn\'t exists',
-                                    description = ('The item you are trying to pick up doesn\'t exists anymore'),
-                                    type = 'error'
-                                })
-                                -- Remove item from the point's items list
-                                point.items[item] = nil
-                                DeleteEntity(entity)
-                            end
-                            break
+                            -- Remove item from the point's items list
                         end
                     end
                 end
@@ -95,10 +90,10 @@ local function setupInteractions(point, entity, item)
     elseif config.useInteract then
         exports.interact:AddLocalEntityInteraction({
             entity = entity,
-            name = ('pickup_%s'):format(item),
-            id = ('drop_%s_%s'):format(point.invId, item),
+            name = ('pickup_%s_%s'):format(item, slot),
+            id = ('drop_%s_%s_%s'):format(point.invId, item, slot),
             distance = 8.0,
-            interactDst = 2.0,
+            interactDst = 3.0,
             options = {
                 {
                     label = ('Pick up %s'):format(item),
@@ -107,33 +102,28 @@ local function setupInteractions(point, entity, item)
                         local inventory = lib.callback.await('snowy_drops:callback:getDropItems', false, point.invId)
                         if not inventory then return end
                         
-                        for slot, slotData in pairs(inventory.items) do
-                            if slotData.name == item then
-                                local data = lib.callback.await('snowy_drops:server:pickupItem', false, point.invId, {
-                                    name = item,
-                                    slot = slot,
-                                    count = slotData.count
+                        local slotData = inventory.items[slot]
+                        if slotData and slotData.name == item then
+                            local data = lib.callback.await('snowy_drops:server:pickupItem', false, point.invId, {
+                                name = item,
+                                slot = slot,
+                                count = slotData.count
+                            })
+                            if data == "no" then return end
+                            if data then
+                               lib.notify({
+                                title = 'Item Picked Up',
+                                description = ('You picked up %s'):format(item),
+                                type = 'success'
+                               })
+                               -- Remove item from the point's items list
+                            else
+                                lib.notify({
+                                    title = 'Item doesn\'t exists',
+                                    description = ('The item you are trying to pick up doesn\'t exists anymore'),
+                                    type = 'error'
                                 })
-                                if data then
-                                   lib.notify({
-                                    title = 'Item Picked Up',
-                                    description = ('You picked up %s'):format(item),
-                                    type = 'success'
-                                   })
-                                   -- Remove item from the point's items list
-                                   point.items[item] = nil
-                                   DeleteEntity(entity)
-                                else
-                                    lib.notify({
-                                        title = 'Item doesn\'t exists',
-                                        description = ('The item you are trying to pick up doesn\'t exists anymore'),
-                                        type = 'error'
-                                    })
-                                    -- Remove item from the point's items list
-                                    point.items[item] = nil
-                                    DeleteEntity(entity)
-                                end
-                                break
+                                -- Remove item from the point's items list
                             end
                         end
                     end
@@ -143,7 +133,7 @@ local function setupInteractions(point, entity, item)
     end
 end
 
-local function addDropObject(point, item)
+local function addDropObject(point, item, slot)
     if(type(point.entitys) ~= "table") then point.entitys = {} end
     local model = config.dropItems[item]
     if model then
@@ -158,18 +148,18 @@ local function addDropObject(point, item)
         PlaceObjectOnGroundProperly(entity)
         FreezeEntityPosition(entity, true)
         SetEntityCollision(entity, true, true)
-        point.entitys[count] = { item = item, entity = entity }
+        point.entitys[count] = { item = item, slot = slot, entity = entity }
         
         if config.useTarget or config.useInteract then
-            setupInteractions(point, entity, item)
+            setupInteractions(point, entity, item, slot)
         end
     end
 end
 
-local function removeDropObject(point, item)
+local function removeDropObject(point, item, slot)
     if(type(point.entitys) ~= "table") then return end
     for _, data in pairs(point.entitys) do
-        if data.item == item then
+        if data.item == item and data.slot == slot then
             if DoesEntityExist(data.entity) then
                 SetEntityAsMissionEntity(data.entity, false, true)
                 DeleteEntity(data.entity)
@@ -200,8 +190,9 @@ local function onEnterDrop(point)
                 DeleteEntity(oxProp)
             end
         end)
-        for item, _ in pairs(point.items) do
-            addDropObject(point, item)
+        for itemSlot, _ in pairs(point.items) do
+            local item, slot = itemSlot:match("(.+):(%d+)")
+            addDropObject(point, item, tonumber(slot))
         end
     end
 end
@@ -247,15 +238,16 @@ AddStateBagChangeHandler('instance', stateId, function(_, _, value)
     end
 end)
 
-RegisterNetEvent('snowy_drops:client:updateDropId', function(dropId, added, item)
+RegisterNetEvent('snowy_drops:client:updateDropId', function(dropId, added, item, slot)
     local point = drops[dropId]
     if point then
+        local itemKey = item .. ":" .. slot
         if added then
-            point.items[item] = true
-            addDropObject(point, item)
+            point.items[itemKey] = true
+            addDropObject(point, item, slot)
         else
-            point.items[item] = nil
-            removeDropObject(point, item)
+            point.items[itemKey] = nil
+            removeDropObject(point, item, slot)
         end
     end
 end)
