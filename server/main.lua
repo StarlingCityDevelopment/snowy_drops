@@ -13,83 +13,60 @@ lib.callback.register('snowy_drops:callback:getDropItems', function(source, drop
     return exports.ox_inventory:GetInventory(dropId, false)
 end)
 
-lib.callback.register('snowy_drops:server:doesDropExist', function(source, dropId)
-    if not string.match(dropId, '^drop%-%d+$') then return end
-    return exports.ox_inventory:GetInventory(dropId, false) ~= nil
-end)
-
 local hookId = exports.ox_inventory:registerHook('swapItems', function(payload)
-    if payload.fromType == "drop" and payload.toType == "drop" or payload.fromType == "player" and payload.toType == "drop" or payload.fromType == "drop" and payload.toType == "player" then
-        local dropId, isToDrop, newItem, oldItem, isInsideDrop
-        isInsideDrop = payload.fromType == "drop" and payload.toType == "drop" and payload.fromInventory == payload.toInventory
-        if payload.action == "move" then
-            if payload.fromType == "drop" then
-                dropId = payload.fromInventory
-                isToDrop = false
-            elseif payload.toType == "drop" then
-                dropId = payload.toInventory
-                isToDrop = true
+    if not (payload.fromType == "drop" or payload.toType == "drop") then return end
+
+    local dropId, isToDrop, newItem, oldItem
+    local isInsideDrop = payload.fromType == "drop" and payload.toType == "drop" and payload.fromInventory == payload.toInventory
+
+    if payload.fromType == "drop" then
+        dropId = payload.fromInventory
+        isToDrop = false
+    else
+        dropId = payload.toInventory
+        isToDrop = true
+    end
+
+    local actions = {
+        move = function()
+            if isInsideDrop and payload.fromSlot.count > payload.count then
+                oldItem = { item = payload.fromSlot.name, slot = payload.fromSlot.slot }
+                newItem = { item = payload.fromSlot.name, slot = payload.toSlot }
+                TriggerClientEvent('snowy_drops:client:updateDropId', -1, dropId, true, newItem, oldItem, isInsideDrop, true)
+                return true
             end
-            if isInsideDrop then
-                if payload.fromSlot.count > payload.count then
-                    oldItem = { item = payload.fromSlot.name, slot = payload.fromSlot.slot }
-                    newItem = { item = payload.fromSlot.name, slot = payload.toSlot }
-                    TriggerClientEvent('snowy_drops:client:updateDropId', -1, dropId, true, newItem, oldItem, isInsideDrop, true)
-                    return true
-                end
-            end
+
             oldItem = { item = payload.fromSlot.name, slot = payload.fromSlot.slot }
             newItem = { item = payload.fromSlot.name, slot = payload.toSlot or payload.fromSlot.slot }
+        end,
 
-            TriggerClientEvent('snowy_drops:client:updateDropId', -1, dropId, isToDrop, newItem, oldItem, isInsideDrop)
-        end
-        if payload.action == "swap" then
-            if payload.fromType == "drop" then
-                dropId = payload.fromInventory
-                isToDrop = false
-            elseif payload.toType == "drop" then
-                dropId = payload.toInventory
-                isToDrop = true
-            end
+        swap = function()
             newItem = { item = payload.toSlot.name, slot = payload.toSlot.slot }
             oldItem = { item = payload.fromSlot.name, slot = payload.fromSlot.slot }
-            TriggerClientEvent('snowy_drops:client:updateDropId', -1, dropId, isToDrop, newItem, oldItem, isInsideDrop)
-        end
-        if payload.action == "stack" then
-            if payload.fromType == "drop" then
-                dropId = payload.fromInventory
-                isToDrop = false
-            elseif payload.toType == "drop" then
-                dropId = payload.toInventory
-                isToDrop = true
-            end
-            
-            if isInsideDrop then                
+        end,
+
+        stack = function()
+            if isInsideDrop then
                 oldItem = { item = payload.fromSlot.name, slot = payload.fromSlot.slot }
                 TriggerClientEvent('snowy_drops:client:updateDropId', -1, dropId, false, nil, oldItem, isInsideDrop)
                 return true
             end
-            
+
             newItem = { item = payload.fromSlot.name, slot = payload.toSlot or payload.fromSlot.slot }
             oldItem = { item = payload.fromSlot.name, slot = payload.fromSlot.slot }
-            TriggerClientEvent('snowy_drops:client:updateDropId', -1, dropId, isToDrop, newItem, oldItem, isInsideDrop)
-        end
-        if payload.action == "drop" then
-            if payload.fromType == "drop" then
-                dropId = payload.fromInventory
-                isToDrop = false
-            elseif payload.toType == "drop" then
-                dropId = payload.toInventory
-                isToDrop = true
-            end
+        end,
+
+        drop = function()
             newItem = { item = payload.fromSlot.name, slot = payload.toSlot or payload.fromSlot.slot }
             oldItem = { item = payload.fromSlot.name, slot = payload.fromSlot.slot }
-            TriggerClientEvent('snowy_drops:client:updateDropId', -1, dropId, isToDrop, newItem, oldItem, isInsideDrop)
-
         end
+    }
 
-        return true
-    end
+    local shouldReturn = actions[payload.action]()
+    if shouldReturn then return true end
+
+    TriggerClientEvent('snowy_drops:client:updateDropId', -1, dropId, isToDrop, newItem, oldItem, isInsideDrop)
+    return true
 end, {
     inventoryFilter = {
         '^drop%-%d+$',
@@ -105,6 +82,9 @@ lib.callback.register('snowy_drops:server:pickupItem', function(source, dropId, 
     if success then
         exports.ox_inventory:AddItem(source, itemData.name, itemData.count, item.metadata)
         local newInv = exports.ox_inventory:GetInventory(source)
+        if newInv and #newInv.items <= 0 then
+            exports.ox_inventory:RemoveInventory(dropId)
+        end
         TriggerClientEvent('snowy_drops:client:updateDropId', -1, dropId, false, nil, { item = itemData.name, slot = itemData.slot }, false)
         return true
     end

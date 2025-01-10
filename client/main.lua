@@ -1,62 +1,48 @@
 local config = require 'config.client'
+local items = require 'config.items'
 local drops = {}
 local dropmodel = joaat(GetConvar('inventory:dropmodel', 'prop_med_bag_01b'))
 local currentInstance
-local lastPosition = vec3(0, 0, 0)
-local currentRow = 0
-local itemsPerRow = 3
-local spacing = 0.3
 
 local function getOffsetCoords(point, model)
-    if #(point.coords - lastPosition) > 0.1 then
-        lastPosition = point.coords
-        currentRow = 0
-    end
+    local radius = 0.5
+    local maxAttempts = 20
+    local detectionRadius = 0.2
 
-    local min, max = GetModelDimensions(model)
-    local radius = 0.5  -- Base radius for the circle
-    local maxAttempts = 20  -- Maximum attempts to find a valid position
-    
-    -- Generate random angle and distance within a circle
     for attempt = 1, maxAttempts do
         local angle = math.random() * 2 * math.pi
-        local distance = math.sqrt(math.random()) * radius  -- Square root for more uniform distribution
-        
-        -- Add some controlled randomness to make it look more natural
-        local jitter = math.random() * 0.1 - 0.05
-        
-        local newCoords = vec3(
-            point.coords.x + math.cos(angle) * distance + jitter,
-            point.coords.y + math.sin(angle) * distance + jitter,
-            point.coords.z
+        local distance = math.sqrt(math.random()) * radius
+        local jitter = vec3(
+            math.random() * 0.1 - 0.05,
+            math.random() * 0.1 - 0.05,
+            0
         )
+        
+        local newCoords = point.coords + vec3(
+            math.cos(angle) * distance,
+            math.sin(angle) * distance,
+            0
+        ) + jitter
 
-        -- Check if position is clear
-        local isPositionClear = true
-        for _, dropModel in pairs(config.dropItems) do
+        local isPositionClear = not next(lib.table.filter(items, function(dropModel)
             local found = GetClosestObjectOfType(
                 newCoords.x, newCoords.y, newCoords.z,
-                0.2,  -- Slightly increased detection radius
+                detectionRadius,
                 joaat(dropModel),
                 false, false, false
             )
-
-            if found and DoesEntityExist(found) then
-                isPositionClear = false
-                break
-            end
-        end
+            return found and DoesEntityExist(found)
+        end))
 
         if isPositionClear then
             return newCoords
         end
     end
 
-    -- Fallback: If no position found, return slightly offset coordinates
-    return vec3(
-        point.coords.x + math.random() * 0.3 - 0.15,
-        point.coords.y + math.random() * 0.3 - 0.15,
-        point.coords.z
+    return point.coords + vec3(
+        math.random() * 0.3 - 0.15,
+        math.random() * 0.3 - 0.15,
+        0
     )
 end
 
@@ -147,7 +133,7 @@ end
 
 local function addDropObject(point, item, slot)
     if(type(point.entitys) ~= "table") then point.entitys = {} end
-    local model = config.dropItems[item]
+    local model = items[item]
     if model then
         local count = #point.entitys + 1
         if not IsModelValid(model) and not IsModelInCdimage(model) then
@@ -255,7 +241,6 @@ RegisterNetEvent('snowy_drops:client:updateDropId', function(dropId, isToDrop, n
     local point = drops[dropId]
     if not point then return end
     
-    lastPosition = vec3(0, 0, 0)
     print(isInsideDrop, isSplit2Props)
     if isInsideDrop then
         if isSplit2Props then
@@ -302,11 +287,9 @@ RegisterNetEvent('snowy_drops:client:updateDropId', function(dropId, isToDrop, n
             removeDropObject(point, oldItem.item, oldItem.slot)
             
             if not next(point.items) then
-                if not lib.callback.await('snowy_drops:server:doesDropExist', false, dropId) then
-                    if point.entitys then removeObjects(point) end
-                    point:remove()
-                    drops[dropId] = nil
-                end
+                if point.entitys then removeObjects(point) end
+                point:remove()
+                drops[dropId] = nil
             end
         end
     end
