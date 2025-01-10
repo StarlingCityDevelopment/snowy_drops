@@ -24,21 +24,20 @@ local function getOffsetCoords(point, model)
             0
         ) + jitter
 
-        local isPositionClear = not next(lib.table.filter(items, function(dropModel)
-            local found = GetClosestObjectOfType(
-                newCoords.x, newCoords.y, newCoords.z,
-                detectionRadius,
-                joaat(dropModel),
-                false, false, false
-            )
-            return found and DoesEntityExist(found)
-        end))
+        -- Check if the position is clear of any existing drop models
+        local found = GetClosestObjectOfType(
+            newCoords.x, newCoords.y, newCoords.z,
+            detectionRadius,
+            model,
+            false, false, false
+        )
 
-        if isPositionClear then
+        if not found or not DoesEntityExist(found) then
             return newCoords
         end
     end
 
+    -- Fallback position if no clear spot is found
     return point.coords + vec3(
         math.random() * 0.3 - 0.15,
         math.random() * 0.3 - 0.15,
