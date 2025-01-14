@@ -17,10 +17,8 @@ item_name = "spawn_code",
 5. Restart the script
 6. Its done!
 
-## How to set up?
-**My custom drops dropmodel is different then configured?**
+## My customdrop model is different then configured?
 This is because we changed the dropmodel convar so that we can correctly remove the model spawned by ox_inventory, if you are using this resource please always set a [dropmodel](https://overextended.dev/ox_inventory/Functions/Server#customdrop) on custom drops.
-
 
 # Credits
 - Special Credits to [@0Programmer](https://github.com/0Programmer) for the spawning part!
