@@ -1,0 +1,13 @@
+{
+    "error": {
+      "inv_busy": "Someone is currently inside of the drop stash",
+      "not_exist": "The item you are trying to pick up doesn't exists anymore"
+    },
+    "success": {
+      "picked_up": "You picked up %s"
+    },
+    "general": {
+      "target_label": "Pick up %s",
+      "interact_label": "Pick up %s"
+    }
+}

@@ -4,9 +4,11 @@ use_experimental_fxv2_oal 'yes'
 lua54        'yes'
 game         'gta5'
 
-author 'Snowy and 0Programmer (CrossSet)'
-description 'Drop items on the ground'
-version '1.1.0'
+author 'Snowy and 0Programmer aka CrossSet'
+description 'Visual items for ox_inventory drop stashes'
+version '1.2.0'
+
+ox_lib 'locale'
 
 --[[ Manifest ]]--
 shared_scripts {
@@ -20,5 +22,7 @@ client_scripts {
 }
 files {
     'config/client.lua',
-    'config/items.lua'
+    'config/items.lua',
+    'config/rotations.lua',
+    'locales/*.json',
 }

@@ -1,0 +1,13 @@
+{
+    "error": {
+      "inv_busy": "Er bevindt zich momenteel iemand in de dropopslag",
+      "not_exist": "Het item dat je probeert te pakken bestaat niet meer"
+    },
+    "success": {
+      "picked_up": "Je hebt een %s opgepakt"
+    },
+    "general": {
+      "target_label": "%s Oppakken",
+      "interact_label": "%s Oppakken"
+    }
+}
