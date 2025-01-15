@@ -6,7 +6,7 @@ game         'gta5'
 
 author 'Snowy and 0Programmer aka CrossSet'
 description 'Visual items for ox_inventory drop stashes'
-version '1.2.0'
+version '1.2.1'
 
 ox_lib 'locale'
 
