@@ -20,6 +20,12 @@ item_name = "spawn_code",
 ## My customdrop model is different then configured?
 This is because we changed the dropmodel convar so that we can correctly remove the model spawned by ox_inventory, if you are using this resource please always set a [dropmodel](https://overextended.dev/ox_inventory/Functions/Server#customdrop) on custom drops.
 
+## Dependencies
+- (ox_inventory)[https://github.com/overextended/ox_inventory] v2.43.5 or higher
+- (ox_lib)[https://github.com/overextended/ox_lib] v3.27.0 or higher
+- (ox_target)[https://github.com/overextended/ox_target] if enabled in config
+- (interact)[https://github.com/darktrovx/interact] if enabled in config
+
 # Credits
 - Special Credits to [@0Programmer](https://github.com/0Programmer) for the spawning part!
 - Me for adding the Interact / Target support.
