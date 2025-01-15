@@ -92,6 +92,17 @@ end, {
     }
 })
 
+local function checkDropCount(dropId)
+	local items = {}
+    local dropItems = exports.ox_inventory:GetInventoryItems(dropId, false)
+    if dropItems then
+        for _, item in pairs(dropItems) do
+            items[#items + 1] = true
+        end
+    end
+    return #items
+end
+
 lib.callback.register('snowy_drops:server:pickupItem', function(source, dropId, itemData)
     local inventory = exports.ox_inventory:GetInventory(dropId)
     if not inventory or inventory.open or inventory.type ~= 'drop' or #(GetEntityCoords(GetPlayerPed(source)) - vec3(inventory.coords.x, inventory.coords.y, inventory.coords.z)) > 2.0 then return 'busy' end
@@ -100,8 +111,7 @@ lib.callback.register('snowy_drops:server:pickupItem', function(source, dropId, 
     local success = exports.ox_inventory:RemoveItem(dropId, item.name, item.count, item.metadata, item.slot)
     if success then
         exports.ox_inventory:AddItem(source, item.name, item.count, item.metadata)
-        local newInv = exports.ox_inventory:GetInventory(source)
-        if newInv and #newInv.items <= 0 then
+        if checkDropCount(dropId) == 0 then
             exports.ox_inventory:RemoveInventory(dropId)
         end
         TriggerClientEvent('snowy_drops:client:updateDropId', -1, {
