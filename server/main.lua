@@ -93,7 +93,7 @@ end, {
 })
 
 local function checkDropCount(dropId)
-	local items = {}
+    local items = {}
     local dropItems = exports.ox_inventory:GetInventoryItems(dropId, false)
     if dropItems then
         for _, item in pairs(dropItems) do
