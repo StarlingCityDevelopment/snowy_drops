@@ -34,6 +34,7 @@ local function doInteractionAction(point, item, slot)
             return lib.notify({ description = locale('error.inv_busy'), type = 'error' })
         end
         if data then
+            lib.playAnim(cache.ped, random@domestic, pickup_low)
             lib.notify({ description = locale('success.picked_up', exports.ox_inventory:Items(item)?.label or item), type = 'success' })
         else
             lib.notify({ description = locale('error.not_exist'), type = 'error' })
