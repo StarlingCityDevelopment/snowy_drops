@@ -1,0 +1,13 @@
+{
+    "error": {
+      "inv_busy": "Quelqu'un est déjà entrain d'inspecter les objets.",
+      "not_exist": "L'objet que vous essayez de récupérer a déjà été ramassé."
+    },
+    "success": {
+      "picked_up": "Vous avez ramassé : %s"
+    },
+    "general": {
+      "target_label": "Ramasser %s",
+      "interact_label": "Ramasser %s"
+    }
+}
