@@ -2,7 +2,7 @@ local config = require 'config.client'
 local items = require 'config.items'
 local rotations = require 'config.rotations'
 local cachedDrops = {}
-local currentInstance
+local currentInstance = LocalPlayer.state.instance or 0
 
 local function getOffsetCoords(point, model)
     local radius = config.propRadius
@@ -195,7 +195,7 @@ local function createDrop(dropId, data)
     cachedDrops[dropId] = point
 end
 
-AddStateBagChangeHandler('instance', stateId, function(_, _, value)
+AddStateBagChangeHandler('instance', ('player:%s'):format(cache.serverId), function(_, _, value)
     currentInstance = value
     if cachedDrops then
         for dropId, point in pairs(cachedDrops) do
