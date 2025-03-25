@@ -18,7 +18,7 @@ item_name = "spawn_code",
 6. Its done!
 
 ## My customdrop model is different then configured?
-This is because we changed the dropmodel convar so that we can correctly remove the model spawned by ox_inventory, if you are using this resource please always set a [dropmodel](https://overextended.dev/ox_inventory/Functions/Server#customdrop) on custom drops.
+This is because we changed the dropmodel convar so that we can correctly remove the model spawned by ox_inventory, if you are using this resource please always set [dropmodel](https://overextended.dev/ox_inventory/Functions/Server#customdrop) to `prop_paper_bag_small`.
 
 ## Dependencies
 - [ox_inventory](https://github.com/overextended/ox_inventory) v2.43.5 or higher
