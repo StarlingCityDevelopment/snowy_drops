@@ -8,7 +8,7 @@ local function getOffsetCoords(point, model)
     local radius = config.propRadius
     local maxAttempts = 20
     local detectionRadius = config.propRadius + 0.2
-    for attempt = 1, maxAttempts do
+    for _ = 1, maxAttempts do
         local angle = math.random() * 2 * math.pi
         local distance = math.sqrt(math.random()) * radius
         local jitter = vec3(math.random() * 0.1 - 0.05, math.random() * 0.1 - 0.05, 0)
@@ -35,7 +35,11 @@ local function doInteractionAction(point, item, slot)
         end
         if data then
             lib.playAnim(cache.ped, 'random@domestic', 'pickup_low')
-            lib.notify({ description = locale('success.picked_up', exports.ox_inventory:Items(item)?.label or item), type = 'success' })
+            lib.notify({
+                description = locale('success.picked_up', exports.ox_inventory:Items(item)?.label or item),
+                type =
+                'success'
+            })
         else
             lib.notify({ description = locale('error.not_exist'), type = 'error' })
         end
@@ -56,26 +60,23 @@ local function setupInteractions(point, entity, item, slot)
             }
         })
     elseif config.useInteract then
-        exports.interact:AddLocalEntityInteraction({
-            entity = entity,
-            id = ('snowydrops_%s:%s'):format(item, slot),
-            distance = 8.0,
-            interactDst = 3.0,
-            options = {
-                {
-                    label = locale('general.interact_label', exports.ox_inventory:Items(item)?.label or item),
-                    action = function()
-                        doInteractionAction(point, item, slot)
-                    end
-                }
-            }
+        exports.sleepless_interact:addLocalEntity(entity, {
+            label = locale('general.interact_label', exports.ox_inventory:Items(item)?.label or item),
+            name = ('snowydrops_%s:%s'):format(item, slot),
+            distance = 5.0,
+            canInteract = function(handle, distance, coords, name)
+                return distance <= 2.0
+            end,
+            onSelect = function(data)
+                doInteractionAction(point, item, slot)
+            end
         })
     end
 end
 
 local function addDropObject(point, item, slot, plcd)
     if point.currentDistance and point.currentDistance > point.distance then return end
-    if(type(point.entitys) ~= 'table') then point.entitys = {} end
+    if (type(point.entitys) ~= 'table') then point.entitys = {} end
     local model = items[string.lower(item)] or config.defaultModel
     if model then
         local key = ('%s:%s'):format(item, slot)
@@ -93,7 +94,8 @@ local function addDropObject(point, item, slot, plcd)
         local itemRotation = rotations[string.lower(item)]
         if string.match(string.lower(item), '^weapon_') then itemRotation = rotations['weapon_'] or nil end
         if itemRotation then
-            SetEntityRotation(entity, itemRotation?.pitch or 0.0, itemRotation?.roll or 0.0, itemRotation?.yaw or 0.0, 2, false)
+            SetEntityRotation(entity, itemRotation?.pitch or 0.0, itemRotation?.roll or 0.0, itemRotation?.yaw or 0.0, 2,
+                false)
             SetEntityCoords(entity, coords.x, coords.y, coords.z + itemRotation?.heightOffset or -0.95)
         end
         point.entitys[key] = { item = item, slot = slot, entity = entity }
@@ -104,14 +106,14 @@ local function addDropObject(point, item, slot, plcd)
 end
 
 local function removeDropObject(point, item, slot)
-    if(type(point.entitys) ~= 'table') then return end
+    if (type(point.entitys) ~= 'table') then return end
     for id, data in pairs(point.entitys) do
         if data.item == item and data.slot == slot then
             if DoesEntityExist(data.entity) then
                 if config.useTarget then
                     exports.ox_target:removeLocalEntity(data.entity, ('snowydrops_%s'):format(id))
                 elseif config.useInteract then
-                    exports.interact:RemoveLocalEntityInteraction(data.entity, ('snowydrops_%s'):format(id))
+                    exports.sleepless_interact:removeLocalEntity(data.entity, ('snowydrops_%s'):format(id))
                 end
                 SetEntityAsMissionEntity(data.entity, false, true)
                 DeleteEntity(data.entity)
@@ -123,13 +125,13 @@ local function removeDropObject(point, item, slot)
 end
 
 local function removeObjects(point)
-    if(type(point.entitys) ~= 'table') then return end
+    if (type(point.entitys) ~= 'table') then return end
     for id, data in pairs(point.entitys) do
         if DoesEntityExist(data.entity) then
             if config.useTarget then
                 exports.ox_target:removeLocalEntity(data.entity, ('snowydrops_%s'):format(id))
             elseif config.useInteract then
-                exports.interact:RemoveLocalEntityInteraction(data.entity, ('snowydrops_%s'):format(id))
+                exports.sleepless_interact:removeLocalEntity(data.entity, ('snowydrops_%s'):format(id))
             end
             SetEntityAsMissionEntity(data.entity, false, true)
             DeleteEntity(data.entity)
@@ -145,7 +147,8 @@ local function onEnterDrop(point)
             local oxProp = nil
             repeat
                 Wait(500)
-                oxProp = GetClosestObjectOfType(point.coords.x, point.coords.y, point.coords.z, 25.0, joaat('prop_paper_bag_small'), false, false, false)
+                oxProp = GetClosestObjectOfType(point.coords.x, point.coords.y, point.coords.z, 25.0,
+                    joaat('prop_paper_bag_small'), false, false, false)
                 if oxProp ~= 0 and DoesEntityExist(oxProp) then break end
             until (GetGameTimer() - startTime) >= 6000
             if DoesEntityExist(oxProp) then

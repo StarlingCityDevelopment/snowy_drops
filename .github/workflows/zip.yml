@@ -1,0 +1,48 @@
+name: Zip Creator
+
+on:
+  push:
+
+jobs:
+  create-zip:
+    name: Build and Create Downloadable Zip
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install archive tools
+        run: sudo apt install zip
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Bundle files
+        run: |
+          mkdir -p ./temp/snowy_drops
+          mkdir -p ./temp/snowy_drops/locales/
+          cp ./fxmanifest.lua ./temp/snowy_drops
+          cp ./{locales/en.json,locales/fr.json} ./temp/snowy_drops/locales
+          cp -r ./{client,config,server} ./temp/snowy_drops
+          cd ./temp && zip -r ../snowy_drops.zip ./snowy_drops
+
+      - name: Create Release
+        uses: 'marvinpinto/action-automatic-releases@v1.2.1'
+        with:
+          automatic_release_tag: "latest"
+          repo_token: '${{ secrets.GITHUB_TOKEN }}'
+          title: 'Ready to download'
+          prerelease: true
+          files: snowy_drops.zip
+
+        env:
+          CI: false
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Repository Dispatch
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.PAT }}
+          repository: StarlingCityDevelopment/resources
+          event-type: update-resources
+          client-payload: '{"res": "snowy_drops"}'
