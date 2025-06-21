@@ -23,6 +23,7 @@ local function handleAction(payload, isInsideDrop, dropId, isToDrop)
         isToDrop = isToDrop,
         isInsideDrop = isInsideDrop
     }
+
     if payload.action == 'move' then
         if isInsideDrop and payload.fromSlot.count > payload.count then
             actionData.oldItem = { item = payload.fromSlot.name, slot = payload.fromSlot.slot }
@@ -39,20 +40,27 @@ local function handleAction(payload, isInsideDrop, dropId, isToDrop)
         if type(payload.toSlot) == 'number' and isToDrop then
             actionData.newItem = { item = payload.fromSlot.name, slot = payload.toSlot }
         end
+
     elseif payload.action == 'swap' then
         if payload.toSlot.name ~= payload.fromSlot.name then
             actionData.oldItem = {
-                { item = payload.fromSlot.name, slot = payload.fromSlot.slot },
-                { item = payload.toSlot.name, slot = payload.toSlot.slot }
+                { item = payload.fromSlot.name, slot = payload.fromSlot.slot, isFromDrop = payload.fromType == 'drop' },
+                { item = payload.toSlot.name, slot = payload.toSlot.slot, isFromDrop = payload.toType == 'drop' }
             }
             actionData.newItem = {
-                { item = payload.fromSlot.name, slot = payload.toSlot.slot },
-                { item = payload.toSlot.name, slot = payload.fromSlot.slot }
+                { item = payload.fromSlot.name, slot = payload.toSlot.slot, isFromDrop = payload.toType == 'drop' },
+                { item = payload.toSlot.name, slot = payload.fromSlot.slot, isFromDrop = payload.fromType == 'drop' }
             }
+
         elseif isToDrop and (payload.fromSlot?.stack or payload.toSlot?.stack) then
             actionData.oldItem = { item = payload.fromSlot.name, slot = payload.fromSlot.slot }
             actionData.newItem = { item = payload.toSlot.name, slot = payload.toSlot.slot }
+
+        elseif payload.fromInventory ~= payload.toInventory then
+            actionData.oldItem = { item = payload.fromSlot.name, slot = payload.fromSlot.slot }
+            actionData.newItem = { item = payload.toSlot.name, slot = payload.toSlot.slot }
         end
+
     elseif payload.action == 'stack' then
         if isInsideDrop then
             if payload.fromSlot.count == 0 then
@@ -68,12 +76,14 @@ local function handleAction(payload, isInsideDrop, dropId, isToDrop)
                 actionData.newItem = { item = payload.fromSlot.name, slot = payload.toSlot }
             end
         end
+
     elseif payload.action == 'drop' then
         actionData.oldItem = { item = payload.fromSlot.name, slot = payload.fromSlot.slot }
         if type(payload.toSlot) == 'number' and isToDrop then
             actionData.newItem = { item = payload.fromSlot.name, slot = payload.toSlot }
         end
     end
+
     if actionData.oldItem or actionData.newItem then
         TriggerClientEvent('snowy_drops:client:updateDropId', -1, actionData)
     end
@@ -105,11 +115,11 @@ end
 
 lib.callback.register('snowy_drops:server:pickupItem', function(source, dropId, itemData)
     local inventory = exports.ox_inventory:GetInventory(dropId)
-    if not inventory or inventory.open or inventory.type ~= 'drop' or #(GetEntityCoords(GetPlayerPed(source)) - vec3(inventory.coords.x, inventory.coords.y, inventory.coords.z)) > 2.0 then 
+    if not inventory or inventory.open or inventory.type ~= 'drop' or #(GetEntityCoords(GetPlayerPed(source)) - vec3(inventory.coords.x, inventory.coords.y, inventory.coords.z)) > 2.0 then
         return 'busy'
     end
     local item = inventory.items[itemData.slot]
-    if not item or item.name ~= itemData.name then 
+    if not item or item.name ~= itemData.name then
         return
     end
     if not exports.ox_inventory:CanCarryItem(source, item.name, item.count, item.metadata or {}) then
@@ -130,4 +140,10 @@ lib.callback.register('snowy_drops:server:pickupItem', function(source, dropId, 
         return true
     end
     return false
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+    if resource == GetCurrentResourceName() then
+        exports.ox_inventory:unregisterHook(hookId)
+    end
 end)

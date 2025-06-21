@@ -76,7 +76,8 @@ end
 local function addDropObject(point, item, slot, plcd)
     if point.currentDistance and point.currentDistance > point.distance then return end
     if(type(point.entitys) ~= 'table') then point.entitys = {} end
-    local model = items[string.lower(item)] or config.defaultModel
+    if not item then return end
+    local model = items[string.lower(item or "")] or config.defaultModel
     if model then
         local key = ('%s:%s'):format(item, slot)
         if point.entitys[key] then return end
@@ -90,8 +91,8 @@ local function addDropObject(point, item, slot, plcd)
         PlaceObjectOnGroundProperly(entity)
         FreezeEntityPosition(entity, true)
         SetEntityCollision(entity, true, false)
-        local itemRotation = rotations[string.lower(item)]
-        if string.match(string.lower(item), '^weapon_') then itemRotation = rotations['weapon_'] or nil end
+        local itemRotation = rotations[string.lower(item or "")]
+        if string.match(string.lower(item or ""), '^weapon_') then itemRotation = rotations['weapon_'] or nil end
         if itemRotation then
             SetEntityRotation(entity, itemRotation?.pitch or 0.0, itemRotation?.roll or 0.0, itemRotation?.yaw or 0.0, 2, false)
             SetEntityCoords(entity, coords.x, coords.y, coords.z + itemRotation?.heightOffset or -0.95)
@@ -220,12 +221,16 @@ end
 RegisterNetEvent('snowy_drops:client:updateDropId', function(actionData)
     local dropId = actionData.dropId
     local point = cachedDrops[dropId]
-    if not point then return end
+    if not point then
+        return
+    end
     local oldItem = actionData.oldItem
     local newItem = actionData.newItem
     local isInsideDrop = actionData.isInsideDrop
     local isToDrop = actionData.isToDrop
     local extraDrop = actionData.extra
+
+
     if isInsideDrop then
         if table.type(oldItem) == 'array' and table.type(newItem) == 'array' then
             for _, oItem in pairs(oldItem) do
@@ -237,8 +242,10 @@ RegisterNetEvent('snowy_drops:client:updateDropId', function(actionData)
             end
             for _, nItem in pairs(newItem) do
                 local newItemKey = getItemKey(nItem)
-                point.items[newItemKey] = true
-                addDropObject(point, nItem.item, nItem.slot, 1)
+                if nItem.isFromDrop then
+                    point.items[newItemKey] = true
+                    addDropObject(point, nItem.item, nItem.slot, 1)
+                end
             end
         else
             local oldItemKey = getItemKey(oldItem)
@@ -259,18 +266,37 @@ RegisterNetEvent('snowy_drops:client:updateDropId', function(actionData)
             end
         end
     elseif isToDrop then
-        if oldItem then
-            local oldItemKey = getItemKey(oldItem)
-            if point.entitys then
-                point.items[oldItemKey] = nil
-                removeDropObject(point, oldItem.item, oldItem.slot)
+        if table.type(oldItem) == 'array' and table.type(newItem) == 'array' then
+            for _, oItem in pairs(oldItem) do
+                local oldItemKey = getItemKey(oItem)
+                if point.items[oldItemKey] then
+                    point.items[oldItemKey] = nil
+                    removeDropObject(point, oItem.item, oItem.slot)
+                end
             end
-        end
-        if newItem then
-            local newItemKey = getItemKey(newItem)
-            if not point.items[newItemKey] then
-                point.items[newItemKey] = true
-                addDropObject(point, newItem.item, newItem.slot, 5)
+            for _, nItem in pairs(newItem) do
+                local newItemKey = getItemKey(nItem)
+                if not point.items[newItemKey] then
+                    if nItem.isFromDrop then
+                        point.items[newItemKey] = true
+                        addDropObject(point, nItem.item, nItem.slot, 5)
+                    end
+                end
+            end
+        else
+            if oldItem then
+                local oldItemKey = getItemKey(oldItem)
+                if point.entitys then
+                    point.items[oldItemKey] = nil
+                    removeDropObject(point, oldItem.item, oldItem.slot)
+                end
+            end
+            if newItem then
+                local newItemKey = getItemKey(newItem)
+                if not point.items[newItemKey] then
+                    point.items[newItemKey] = true
+                    addDropObject(point, newItem.item, newItem.slot, 5)
+                end
             end
         end
     else
@@ -300,5 +326,15 @@ RegisterNetEvent('ox_inventory:removeDrop', function(dropId)
         cachedDrops[dropId] = nil
         point:remove()
         if point.entitys then removeObjects(point) end
+    end
+end)
+
+AddEventHandler('onResourceStop', function(resource)
+    if resource == GetCurrentResourceName() then
+        for dropId, point in pairs(cachedDrops) do
+            if point.entitys then removeObjects(point) end
+            point:remove()
+        end
+        cachedDrops = {}
     end
 end)
