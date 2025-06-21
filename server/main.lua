@@ -105,10 +105,16 @@ end
 
 lib.callback.register('snowy_drops:server:pickupItem', function(source, dropId, itemData)
     local inventory = exports.ox_inventory:GetInventory(dropId)
-    if not inventory or inventory.open or inventory.type ~= 'drop' or #(GetEntityCoords(GetPlayerPed(source)) - vec3(inventory.coords.x, inventory.coords.y, inventory.coords.z)) > 2.0 then return 'busy' end
+    if not inventory or inventory.open or inventory.type ~= 'drop' or #(GetEntityCoords(GetPlayerPed(source)) - vec3(inventory.coords.x, inventory.coords.y, inventory.coords.z)) > 2.0 then 
+        return 'busy'
+    end
     local item = inventory.items[itemData.slot]
-    if not item or item.name ~= itemData.name then return end
-    if not exports.ox_inventory:CanCarryItem(item.name, item.count, item.metadata) then return end
+    if not item or item.name ~= itemData.name then 
+        return
+    end
+    if not exports.ox_inventory:CanCarryItem(source, item.name, item.count, item.metadata or {}) then
+        return
+    end
     local success = exports.ox_inventory:RemoveItem(dropId, item.name, item.count, item.metadata, item.slot)
     if success then
         exports.ox_inventory:AddItem(source, item.name, item.count, item.metadata)
