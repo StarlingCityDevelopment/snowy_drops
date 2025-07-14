@@ -88,8 +88,11 @@ local function addDropObject(point, item, slot, plcd)
         local coords = getOffsetCoords(point, model)
         local entity = CreateObject(model, coords.x, coords.y, coords.z, false, true, true)
         SetModelAsNoLongerNeeded(model)
-        PlaceObjectOnGroundProperly(entity)
+        if not PlaceObjectOnGroundOrObjectProperly(entity) then
+            PlaceObjectOnGroundProperly(entity)
+        end
         FreezeEntityPosition(entity, true)
+        SetEntityInvincible(entity, true)
         SetEntityCollision(entity, true, false)
         local itemRotation = rotations[string.lower(item or "")]
         if string.match(string.lower(item or ""), '^weapon_') then itemRotation = rotations['weapon_'] or nil end
